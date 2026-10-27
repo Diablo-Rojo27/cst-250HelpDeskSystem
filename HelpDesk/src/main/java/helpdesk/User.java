@@ -12,29 +12,28 @@ public class User {
     private String email;
 
     public User(int userID, String name, Role role, String email) {
-        // TODO: store each parameter in its matching field (use "this.")
+        this.userID = userID;
+        this.name = name;
+        this.role = role;
+        this.email = email;
     }
 
     // ---------- Getters ----------
 
     public int getUserID() {
-        // TODO: return the userID field
-        return 0;
+        return userID;
     }
 
     public String getName() {
-        // TODO: return the name field
-        return null;
+        return name;
     }
 
     public Role getRole() {
-        // TODO: return the role field
-        return null;
+        return role;
     }
 
     public String getEmail() {
-        // TODO: return the email field
-        return null;
+        return email;
     }
 
     /**
@@ -42,13 +41,12 @@ public class User {
      * Example: only staff can process or close tickets.
      */
     public boolean isStaff() {
-        // TODO: return true if role is Role.STAFF, otherwise false
-        return false;
+        return role == Role.STAFF;
     }
 
     @Override
     public String toString() {
-        // TODO: return a readable line, for example: "#2 Jordan Lee (STAFF)"
-        return "";
+        // Example: "#2 Jordan Lee (STAFF)"
+        return "#" + userID + " " + name + " (" + role + ")";
     }
 }
