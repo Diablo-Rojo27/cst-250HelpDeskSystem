@@ -1,3 +1,4 @@
+
 package helpdesk;
 
 /**
@@ -19,84 +20,95 @@ public class Ticket {
     private String description;
     private Priority priority;
     private Status status;
-    private int submissionOrder;   // tiebreaker: lower number = submitted earlier
+    private int submissionOrder;
     private User submittedBy;
-    private User assignedTo;       // null until staff picks it up
-    private String resolutionNote; // null until closed
+    private User assignedTo;
+    private String resolutionNote;
+
+    // ---------- Constructor ----------
 
     public Ticket(int ticketID, String category, String description,
                   Priority priority, int submissionOrder, User submittedBy) {
-        // TODO: store each parameter in its field
-        // TODO: set status to Status.OPEN
-        // TODO: leave assignedTo and resolutionNote as null
+
+        this.ticketID = ticketID;
+        this.category = category;
+        this.description = description;
+        this.priority = priority;
+        this.submissionOrder = submissionOrder;
+        this.submittedBy = submittedBy;
+
+        this.status = Status.OPEN;
+        this.assignedTo = null;
+        this.resolutionNote = null;
     }
 
     // ---------- Getters ----------
 
     public int getTicketID() {
-        // TODO
-        return 0;
+        return ticketID;
     }
 
     public String getCategory() {
-        // TODO
-        return null;
+        return category;
     }
 
     public String getDescription() {
-        // TODO
-        return null;
+        return description;
     }
 
     public Priority getPriority() {
-        // TODO
-        return null;
+        return priority;
     }
 
     public Status getStatus() {
-        // TODO
-        return null;
+        return status;
     }
 
     public int getSubmissionOrder() {
-        // TODO
-        return 0;
+        return submissionOrder;
     }
 
     public User getSubmittedBy() {
-        // TODO
-        return null;
+        return submittedBy;
     }
 
     public User getAssignedTo() {
-        // TODO
-        return null;
+        return assignedTo;
     }
 
     public String getResolutionNote() {
-        // TODO
-        return null;
+        return resolutionNote;
     }
 
-    // ---------- Setters (only for fields that change after creation) ----------
+    // ---------- Setters ----------
 
     public void setStatus(Status status) {
-        // TODO
+        this.status = status;
     }
 
     public void setAssignedTo(User assignedTo) {
-        // TODO
+        this.assignedTo = assignedTo;
     }
 
     public void setResolutionNote(String resolutionNote) {
-        // TODO
+        this.resolutionNote = resolutionNote;
     }
+
+    // ---------- toString ----------
 
     @Override
     public String toString() {
-        // TODO: return one readable line, for example:
-        // "#3 [HIGH] Network - Wifi down in library | Status: OPEN | By: Sam"
-        // Tip: if assignedTo is not null, add who it is assigned to.
-        return "";
+
+        String result = "#" + ticketID
+                + " [" + priority + "] "
+                + category + " - " + description
+                + " | Status: " + status
+                + " | By: " + submittedBy.getName();
+
+        if (assignedTo != null) {
+            result += " | Assigned to: " + assignedTo.getName();
+        }
+
+        return result;
     }
 }
