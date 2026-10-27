@@ -1,14 +1,22 @@
-
 package helpdesk;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.PriorityQueue;
-import java.util.Comparator;
 
 /**
- * The brain of the Help Desk application.
- * Stores users and tickets and handles the main system logic.
+ * The "brain" of the app. Holds every ticket and user, and does all the work.
+ * Main only handles menus and input; it calls these methods to get things done.
+ *
+ * Data structures and what each one is for:
+ *   allTickets   ArrayList      every ticket ever made, in submission order (used for linear search and sorting)
+ *   ticketsByID  HashMap        ticket ID -> ticket, for fast lookup by ID
+ *   openQueue    PriorityQueue  only OPEN tickets; poll() always hands back the most urgent one
+ *   users        HashMap        user ID -> user, for simulated login
+ *
+ * Any rule that gets broken (blank description, unknown ID, non-staff doing staff work)
+ * throws an IllegalArgumentException with a message. Main catches it and prints the message.
  */
 public class HelpDeskSystem {
 
@@ -17,13 +25,10 @@ public class HelpDeskSystem {
     private PriorityQueue<Ticket> openQueue;
     private HashMap<Integer, User> users;
 
-    private int nextTicketID;
-    private int nextSubmissionOrder;
-
-    // ================= CONSTRUCTOR =================
+    private int nextTicketID;        // starts at 1, goes up by 1 for each new ticket
+    private int nextSubmissionOrder; // starts at 1, goes up by 1 for each new ticket
 
     public HelpDeskSystem() {
-
         allTickets = new ArrayList<>();
         ticketsByID = new HashMap<>();
         users = new HashMap<>();
@@ -31,282 +36,47 @@ public class HelpDeskSystem {
         nextTicketID = 1;
         nextSubmissionOrder = 1;
 
-        // HIGH first, then MEDIUM, then LOW.
-        // Earlier submissions come first when priorities match.
-        Comparator<Ticket> ticketComparator =
-                Comparator.comparingInt(
-                        (Ticket t) -> t.getPriority().ordinal())
-                .thenComparingInt(Ticket::getSubmissionOrder);
+        // The comparator tells the PriorityQueue how to order tickets, so Java does the ordering for us.
+        //   Rule 1: lower priority rank comes first (HIGH = 1, MEDIUM = 2, LOW = 3)
+        //   Rule 2: if the ranks tie, lower submissionOrder comes first (first come, first served)
+        Comparator<Ticket> urgencyOrder =
+                Comparator.comparingInt((Ticket t) -> t.getPriority().getRank())
+                          .thenComparingInt(t -> t.getSubmissionOrder());
 
-        openQueue = new PriorityQueue<>(ticketComparator);
+        openQueue = new PriorityQueue<>(urgencyOrder);
     }
 
     // ================= USERS =================
 
     public void addUser(User user) {
-
         users.put(user.getUserID(), user);
     }
 
     public User getUser(int userID) {
-
+        // HashMap.get returns null if no user has that ID
         return users.get(userID);
     }
 
     // ================= REQUESTER ACTIONS =================
 
-    public Ticket submitTicket(User requester, String category,
-                               String description, Priority priority) {
-
+    /**
+     * Creates a new ticket and adds it to all three ticket structures.
+     * Returns the new ticket so Main can print the ID back to the user.
+     */
+    public Ticket submitTicket(User requester, String category, String description, Priority priority) {
+        // ----- Validation -----
         if (requester == null) {
-            throw new IllegalArgumentException(
-                    "Requester cannot be null.");
+            throw new IllegalArgumentException("You must be logged in to submit a ticket.");
         }
-
+        if (category == null || category.trim().isEmpty()) {
+            throw new IllegalArgumentException("Category cannot be empty.");
+        }
         if (description == null || description.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Ticket description cannot be empty.");
+            throw new IllegalArgumentException("Description cannot be empty.");
         }
-
         if (priority == null) {
-            throw new IllegalArgumentException(
-                    "Please select a valid priority.");
+            throw new IllegalArgumentException("Invalid priority. Choose High, Medium, or Low.");
         }
 
-        Ticket ticket = new Ticket(
-                nextTicketID,
-                category,
-                description,
-                priority,
-                nextSubmissionOrder,
-                requester
-        );
-
-        allTickets.add(ticket);
-
-        ticketsByID.put(ticket.getTicketID(), ticket);
-
-        openQueue.offer(ticket);
-
-        nextTicketID++;
-        nextSubmissionOrder++;
-
-        return ticket;
-    }
-
-    public ArrayList<Ticket> getTicketsByUser(User requester) {
-
-        ArrayList<Ticket> results = new ArrayList<>();
-
-        if (requester == null) {
-            return results;
-        }
-
-        for (Ticket ticket : allTickets) {
-
-            if (ticket.getSubmittedBy().getUserID()
-                    == requester.getUserID()) {
-
-                results.add(ticket);
-            }
-        }
-
-        return results;
-    }
-
-    // ================= SEARCHING =================
-
-    public Ticket searchByID(int ticketID) {
-
-        return ticketsByID.get(ticketID);
-    }
-
-    public ArrayList<Ticket> searchByCategory(String category) {
-
-        ArrayList<Ticket> results = new ArrayList<>();
-
-        if (category == null) {
-            return results;
-        }
-
-        for (Ticket ticket : allTickets) {
-
-            if (ticket.getCategory() != null
-                    && ticket.getCategory().equalsIgnoreCase(category)) {
-
-                results.add(ticket);
-            }
-        }
-
-        return results;
-    }
-
-    // ================= SORTING =================
-
-    public ArrayList<Ticket> sortByPriority() {
-
-        ArrayList<Ticket> copy = new ArrayList<>(allTickets);
-
-        // Selection Sort
-        for (int i = 0; i < copy.size() - 1; i++) {
-
-            int minIndex = i;
-
-            for (int j = i + 1; j < copy.size(); j++) {
-
-                Ticket current = copy.get(j);
-                Ticket minimum = copy.get(minIndex);
-
-                int currentPriority = current.getPriority().ordinal();
-                int minimumPriority = minimum.getPriority().ordinal();
-
-                if (currentPriority < minimumPriority
-                        || (currentPriority == minimumPriority
-                        && current.getSubmissionOrder()
-                        < minimum.getSubmissionOrder())) {
-
-                    minIndex = j;
-                }
-            }
-
-            Ticket temp = copy.get(i);
-            copy.set(i, copy.get(minIndex));
-            copy.set(minIndex, temp);
-        }
-
-        return copy;
-    }
-
-    // ================= STAFF ACTIONS =================
-
-    public Ticket processNextTicket(User staff) {
-
-        if (staff == null || !staff.isStaff()) {
-            throw new IllegalArgumentException(
-                    "Only staff can process tickets.");
-        }
-
-        Ticket next = openQueue.poll();
-
-        // Skip tickets that are no longer OPEN.
-        while (next != null && next.getStatus() != Status.OPEN) {
-            next = openQueue.poll();
-        }
-
-        if (next == null) {
-            return null;
-        }
-
-        next.setStatus(Status.IN_PROGRESS);
-        next.setAssignedTo(staff);
-
-        return next;
-    }
-
-    public void updateStatus(User staff, int ticketID,
-                             Status newStatus) {
-
-        if (staff == null || !staff.isStaff()) {
-            throw new IllegalArgumentException(
-                    "Only staff can update tickets.");
-        }
-
-        Ticket ticket = searchByID(ticketID);
-
-        if (ticket == null) {
-            throw new IllegalArgumentException(
-                    "Ticket not found.");
-        }
-
-        if (newStatus == null) {
-            throw new IllegalArgumentException(
-                    "Invalid ticket status.");
-        }
-
-        if (newStatus == Status.CLOSED) {
-            throw new IllegalArgumentException(
-                    "Use closeTicket() to close a ticket.");
-        }
-
-        Status oldStatus = ticket.getStatus();
-
-        if (oldStatus == Status.CLOSED) {
-            throw new IllegalArgumentException(
-                    "Closed tickets cannot be updated.");
-        }
-
-        if (oldStatus == newStatus) {
-            return;
-        }
-
-        if (newStatus == Status.IN_PROGRESS) {
-            if (oldStatus != Status.OPEN) {
-                throw new IllegalArgumentException(
-                        "Ticket must be OPEN to start processing.");
-            }
-
-            // Remove this ticket from the waiting queue.
-            openQueue.remove(ticket);
-            ticket.setAssignedTo(staff);
-        }
-
-        if (newStatus == Status.OPEN) {
-            ticket.setAssignedTo(null);
-            openQueue.offer(ticket);
-        }
-
-        ticket.setStatus(newStatus);
-    }
-
-    public void closeTicket(User staff, int ticketID,
-                            String resolutionNote) {
-
-        if (staff == null || !staff.isStaff()) {
-            throw new IllegalArgumentException(
-                    "Only staff can close tickets.");
-        }
-
-        Ticket ticket = searchByID(ticketID);
-
-        if (ticket == null) {
-            throw new IllegalArgumentException(
-                    "Ticket not found.");
-        }
-
-        if (ticket.getStatus() != Status.IN_PROGRESS) {
-            throw new IllegalArgumentException(
-                    "Ticket must be IN_PROGRESS before closing.");
-        }
-
-        if (resolutionNote == null
-                || resolutionNote.trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "A resolution note is required.");
-        }
-
-        ticket.setResolutionNote(resolutionNote.trim());
-        ticket.setStatus(Status.CLOSED);
-    }
-
-    // ================= TICKET HISTORY =================
-
-    public ArrayList<Ticket> getClosedTickets() {
-
-        ArrayList<Ticket> results = new ArrayList<>();
-
-        for (Ticket ticket : allTickets) {
-
-            if (ticket.getStatus() == Status.CLOSED) {
-                results.add(ticket);
-            }
-        }
-
-        return results;
-    }
-
-    public ArrayList<Ticket> getAllTickets() {
-
-        return new ArrayList<>(allTickets);
-    }
-}
+        // ----- Build the ticket -----
+        Ticket ticket = new
