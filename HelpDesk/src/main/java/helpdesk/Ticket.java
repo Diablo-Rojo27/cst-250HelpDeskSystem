@@ -1,4 +1,3 @@
-
 package helpdesk;
 
 /**
@@ -107,6 +106,10 @@ public class Ticket {
 
         if (assignedTo != null) {
             result += " | Assigned to: " + assignedTo.getName();
+        }
+
+        if (resolutionNote != null) {
+            result += " | Resolution: " + resolutionNote;
         }
 
         return result;
